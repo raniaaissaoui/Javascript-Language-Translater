@@ -1,9 +1,9 @@
 const languages = [
   {
-    no: "0",
-    name: "Auto",
-    native: "Detect",
-    code: "auto",
+    no: "16",
+    name: "English",
+    native: "English",
+    code: "en",
   },
   {
     no: "1",
@@ -94,12 +94,6 @@ const languages = [
     name: "Dutch",
     native: "Nederlands",
     code: "nl",
-  },
-  {
-    no: "16",
-    name: "English",
-    native: "English",
-    code: "en",
   },
   {
     no: "17",

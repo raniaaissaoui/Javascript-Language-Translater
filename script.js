@@ -1,5 +1,111 @@
+const recordBtn = document.querySelector(".record"),
+  result = document.querySelector(".result"),
+  downloadBtn = document.querySelector(".download"),
+  inputLanguage = document.querySelector("#language"),
+  clearBtn = document.querySelector(".clear");
+
+let SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition,
+  recognition,
+  recording = false;
+
+function populateLanguages() {
+  languages.forEach((lang) => {
+    const option = document.createElement("option");
+    option.value = lang.code;
+    option.innerHTML = lang.name;
+    inputLanguage.appendChild(option);
+  });
+}
+
+populateLanguages();
+
+function speechToText() {
+  try {
+    recognition = new SpeechRecognition();
+    recognition.lang = inputLanguage.value;
+    recognition.interimResults = true;
+    recordBtn.classList.add("recording");
+    recordBtn.querySelector("p").innerHTML = "Listening...";
+    recognition.start();
+    recognition.onresult = (event) => {
+      const speechResult = event.results[0][0].transcript;
+      //detect when intrim results
+      if (event.results[0].isFinal) {
+        result.innerHTML += " " + speechResult;
+        //result.querySelector("p").remove();
+        const event = new Event('input', { bubbles: true });
+        inputTextElem.dispatchEvent(event);
+      } 
+      downloadBtn.disabled = false;
+    };
+    recognition.onspeechend = () => {
+      speechToText();
+    };
+    recognition.onerror = (event) => {
+      stopRecording();
+      if (event.error === "no-speech") {
+        alert("No speech was detected. Stopping...");
+      } else if (event.error === "audio-capture") {
+        alert(
+          "No microphone was found. Ensure that a microphone is installed."
+        );
+      } else if (event.error === "not-allowed") {
+        alert("Permission to use microphone is blocked.");
+      } else if (event.error === "aborted") {
+        alert("Listening Stopped.");
+      } else {
+        alert("Error occurred in recognition: " + event.error);
+      }
+    };
+  } catch (error) {
+    recording = false;
+
+    console.log(error);
+  }
+}
+
+recordBtn.addEventListener("click", () => {
+  if (!recording) {
+    speechToText();
+    recording = true;
+  } else {
+    stopRecording();
+  }
+});
+
+function stopRecording() {
+  recognition.stop();
+  recordBtn.querySelector("p").innerHTML = "Start Listening";
+  recordBtn.classList.remove("recording");
+  recording = false;
+}
+
+function download() {
+  const text = result.innerText;
+  const filename = "speech.txt";
+
+  const element = document.createElement("a");
+  element.setAttribute(
+    "href",
+    "data:text/plain;charset=utf-8," + encodeURIComponent(text)
+  );
+  element.setAttribute("download", filename);
+  element.style.display = "none";
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+}
+
+downloadBtn.addEventListener("click", download);
+
+clearBtn.addEventListener("click", () => {
+  result.innerHTML = "";
+  downloadBtn.disabled = true;
+});
+
 const dropdowns = document.querySelectorAll(".dropdown-container"),
-  inputLanguageDropdown = document.querySelector("#input-language"),
+  inputLangDropdown = document.querySelector("#input-language"),
   outputLanguageDropdown = document.querySelector("#output-language");
 
 function populateDropdown(dropdown, options) {
@@ -14,7 +120,6 @@ function populateDropdown(dropdown, options) {
   });
 }
 
-populateDropdown(inputLanguageDropdown, languages);
 populateDropdown(outputLanguageDropdown, languages);
 
 dropdowns.forEach((dropdown) => {
@@ -45,103 +150,60 @@ document.addEventListener("click", (e) => {
 });
 
 const swapBtn = document.querySelector(".swap-position"),
-  inputLanguage = inputLanguageDropdown.querySelector(".selected"),
+  inputLang = inputLangDropdown.querySelector(".selected"),
   outputLanguage = outputLanguageDropdown.querySelector(".selected"),
   inputTextElem = document.querySelector("#input-text"),
   outputTextElem = document.querySelector("#output-text");
 
-swapBtn.addEventListener("click", (e) => {
-  const temp = inputLanguage.innerHTML;
-  inputLanguage.innerHTML = outputLanguage.innerHTML;
-  outputLanguage.innerHTML = temp;
-
-  const tempValue = inputLanguage.dataset.value;
-  inputLanguage.dataset.value = outputLanguage.dataset.value;
-  outputLanguage.dataset.value = tempValue;
-
-  //swap text
-  const tempInputText = inputTextElem.value;
-  inputTextElem.value = outputTextElem.value;
-  outputTextElem.value = tempInputText;
-
-  translate();
-});
-
-function translate() {
-  const inputText = inputTextElem.value;
-  const inputLanguage =
-    inputLanguageDropdown.querySelector(".selected").dataset.value;
-  const outputLanguage =
-    outputLanguageDropdown.querySelector(".selected").dataset.value;
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${inputLanguage}&tl=${outputLanguage}&dt=t&q=${encodeURI(
-    inputText
-  )}`;
-  fetch(url)
-    .then((response) => response.json())
-    .then((json) => {
-      console.log(json);
-      outputTextElem.value = json[0].map((item) => item[0]).join("");
-    })
-    .catch((error) => {
-      console.log(error);
-    });
-}
-inputTextElem.addEventListener("input", (e) => {
-  //limit input to 5000 characters
-  if (inputTextElem.value.length > 5000) {
-    inputTextElem.value = inputTextElem.value.slice(0, 5000);
+  swapBtn.addEventListener("click", (e) => {
+    const temp = inputLang.innerHTML;
+    inputLang.innerHTML = outputLanguage.innerHTML;
+    outputLanguage.innerHTML = temp;
+  
+    const tempValue = inputLang.dataset.value;
+    inputLang.dataset.value = outputLanguage.dataset.value;
+    outputLanguage.dataset.value = tempValue;
+  
+    //swap text
+    const tempInputText = inputTextElem.value;
+    inputTextElem.value = outputTextElem.value;
+    outputTextElem.value = tempInputText;
+  
+    translate();
+  });
+  
+  function translate() {
+    const inputText = inputTextElem.value;
+    const inputLang =
+      inputLangDropdown.querySelector(".selected").dataset.value;
+    const outputLanguage =
+      outputLanguageDropdown.querySelector(".selected").dataset.value;
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${inputLang}&tl=${outputLanguage}&dt=t&q=${encodeURI(
+      inputText
+    )}`;
+    fetch(url)
+      .then((response) => response.json())
+      .then((json) => {
+        console.log(json);
+        outputTextElem.value = json[0].map((item) => item[0]).join("");
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }
-  translate();
-});
-
-const uploadDocument = document.querySelector("#upload-document"),
-  uploadTitle = document.querySelector("#upload-title");
-
-uploadDocument.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (
-    file.type === "application/pdf" ||
-    file.type === "text/plain" ||
-    file.type === "application/msword" ||
-    file.type ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    uploadTitle.innerHTML = file.name;
-    const reader = new FileReader();
-    reader.readAsText(file);
-    reader.onload = (e) => {
-      inputTextElem.value = e.target.result;
-      translate();
-    };
-  } else {
-    alert("Please upload a valid file");
-  }
-});
-
-const downloadBtn = document.querySelector("#download-btn");
-
-downloadBtn.addEventListener("click", (e) => {
-  const outputText = outputTextElem.value;
-  const outputLanguage =
-    outputLanguageDropdown.querySelector(".selected").dataset.value;
-  if (outputText) {
-    const blob = new Blob([outputText], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.download = `translated-to-${outputLanguage}.txt`;
-    a.href = url;
-    a.click();
-  }
-});
-
-const darkModeCheckbox = document.getElementById("dark-mode-btn");
-
-darkModeCheckbox.addEventListener("change", () => {
-  document.body.classList.toggle("dark");
-});
-
-const inputChars = document.querySelector("#input-chars");
-
-inputTextElem.addEventListener("input", (e) => {
-  inputChars.innerHTML = inputTextElem.value.length;
-});
+  inputTextElem.addEventListener("input", (e) => {
+    //limit input to 5000 characters
+    if (inputTextElem.value.length > 5000) {
+      inputTextElem.value = inputTextElem.value.slice(0, 5000);
+    }
+    translate();
+  });
+  
+  
+  
+  
+  const darkModeCheckbox = document.getElementById("dark-mode-btn");
+  
+  darkModeCheckbox.addEventListener("change", () => {
+    document.body.classList.toggle("dark");
+  });
